@@ -1,51 +1,35 @@
+import json
+import uuid
+import boto3
+import base64
+from io import BytesIO
+s3 = boto3.client('s3')
 
 def lambda_handler(event, context):
-
-    print(json.dumps(event))
-
-    record = event['Records'][0]
+    # Get the MP3 file data from the event
+    mp3_data = base64.b64decode(event['mp3Data'])
+    mp3_name = event['mp3Name']
     
-    s3bucket = record['s3']['bucket']['name']
-    s3object = record['s3']['object']['key']
+    new_mp3_name = mp3_name + '-' + str(uuid.uuid4()) +'.mp3'
     
-    s3Path = "s3://" + s3bucket + "/" + s3object
-    jobName = s3object + '-' + 'transcript'
-
-    client = boto3.client('transcribe')
-
-    response = client.start_transcription_job(
-        TranscriptionJobName=jobName,
-        LanguageCode='en-US',
-        MediaFormat='mp3',
-        Media={
-            'MediaFileUri': s3Path
-        }
-    )
+    # Upload the MP3 file to the S3 bucket
+    bucket_name = "audio-transcribe-textfile-bucket"
+    s3.upload_fileobj(BytesIO(mp3_data), bucket_name, new_mp3_name)
     
-    status = response['TranscriptionJob']['TranscriptionJobStatus']
+    output_bucket_name = 'comprehend-keyphrases-bucket'
+    output_key = new_mp3_name + '-transcript' + '-comprehend' + '.txt'
+    # print(output_key)
+    # waiter = s3.get_waiter('object_exists')
+    # waiter.wait(Bucket = output_bucket_name, Key = output_key)
     
-    job_status = None
-    
-    while job_status not in ['COMPLETED', 'FAILED']:
-        job = client.get_transcription_job(TranscriptionJobName=jobName)
-        job_status = job['TranscriptionJob']['TranscriptionJobStatus']
-        if job_status == 'COMPLETED':
-            transcript_file_uri = job['TranscriptionJob']['Transcript']['TranscriptFileUri']
-            transcript_response = requests.get(transcript_file_uri)
-            data = json.loads(transcript_response.text)
-            transcript = data['results']['transcripts'][0]['transcript']
-            print(transcript)
-            uploadByteStream = bytes(json.dumps(transcript).encode('UTF-8'))
-            
-            s3_client = boto3.client('s3')
-            s3_bucket = 'transcript-file-bucket'
-            s3_key = f"{jobName}.txt"
-            s3_client.put_object(Bucket=s3_bucket, Key=s3_key, Body=uploadByteStream)
-        elif job_status == 'FAILED':
-            print('Transcription job failed')
-            break
-    
+    #  # Get the result data from the S3 object
+    # result_object = s3.get_object(Bucket=output_bucket_name, Key=output_key)
+    # result_data = result_object['Body'].read().decode('utf-8')
+    object_key = {
+        "object_key": output_key
+    }
+  # Return the result data to the client
     return {
-        'statusCode' : 200,
-        'body' : ''
+        'statusCode': 200,
+        'body': object_key
     }
