@@ -1,3 +1,7 @@
-# rec2note
+## rec2note
 
-Majority of the Lambda are written and tested on the AWS console so there is not much codes here
+The majority of the Lambda functions are written and tested on the AWS console 
+The api_call folder contains simple backend functions for accessing AWS api from the outside 
+
+
+
