@@ -1,0 +1,31 @@
+import requests
+import sys
+import json
+
+url = 'https://x11o87hbkc.execute-api.ap-southeast-1.amazonaws.com/stage_1/'
+
+# Check if parameter value is provided
+if len(sys.argv) > 1:
+    param_value = sys.argv[1]
+else:
+    print("Parameter value is missing.")
+    sys.exit()
+
+# Set the request parameters
+params = {
+    'object_key': param_value
+}
+
+# Send the GET request and store the response
+response = requests.get(url, params=params)
+
+# Check if the response was successful (status code 200)
+if response.status_code == 200:
+    # Print the response content
+    data = json.loads(response.content)
+    note = data['body']
+
+    print(note)
+
+else:
+    print("Error:", response.status_code)
